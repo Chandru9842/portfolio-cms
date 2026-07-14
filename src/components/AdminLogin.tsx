@@ -37,19 +37,19 @@ export default function AdminLogin({ onLoginSuccess, onBackToPortfolio, initialM
   }, []);
 
   // Retrieve dynamic configuration from the public endpoint
-  useEffect(() => {
-    fetch('/api/auth/login-config')
-      .then((res) => {
-        if (res.ok) return res.json();
-        return null;
-      })
-      .then((data) => {
-        if (data) {
-          setLoginConfig(data);
-        }
-      })
-      .catch((err) => console.error('Error reading system auth settings:', err));
-  }, []);
+  // useEffect(() => {
+  //   fetch('/api/auth/login-config')
+  //     .then((res) => {
+  //       if (res.ok) return res.json();
+  //       return null;
+  //     })
+  //     .then((data) => {
+  //       if (data) {
+  //         setLoginConfig(data);
+  //       }
+  //     })
+  //     .catch((err) => console.error('Error reading system auth settings:', err));
+  // }, []);
 
   // Clear error message after 5 seconds
   useEffect(() => {
@@ -83,7 +83,10 @@ export default function AdminLogin({ onLoginSuccess, onBackToPortfolio, initialM
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, rememberMe, deviceId }),
+        body: JSON.stringify({
+       usernameOrEmail: email,
+        password: password
+})
       });
 
       const data = await response.json();
@@ -97,17 +100,24 @@ export default function AdminLogin({ onLoginSuccess, onBackToPortfolio, initialM
         const otherStorage = isRememberActive ? sessionStorage : localStorage;
 
         // Clear tokens from the alternative storage to prevent conflicts
-        otherStorage.removeItem('admin_token');
-        otherStorage.removeItem('alex_dev_jwt_token');
-        otherStorage.removeItem('admin_refresh_token');
-        otherStorage.removeItem('admin_user');
-        otherStorage.removeItem('admin_remember');
+      // Clear tokens from the alternative storage to prevent conflicts
+otherStorage.removeItem('admin_token');
+otherStorage.removeItem('alex_dev_jwt_token');
+otherStorage.removeItem('admin_refresh_token');
+otherStorage.removeItem('admin_user');
+otherStorage.removeItem('admin_remember');
 
-        // Store tokens securely in the target storage
-        storage.setItem('admin_token', data.token);
-        storage.setItem('alex_dev_jwt_token', data.token);
-        storage.setItem('admin_refresh_token', data.refreshToken || '');
-        storage.setItem('admin_user', JSON.stringify(data.user));
+// Create user object from backend response
+const user = {
+  username: data.username,
+  role: data.role,
+};
+
+// Store tokens securely
+storage.setItem('admin_token', data.accessToken);
+storage.setItem('alex_dev_jwt_token', data.accessToken);
+storage.setItem('admin_refresh_token', data.refreshToken);
+storage.setItem('admin_user', JSON.stringify(user));
         
         if (isRememberActive) {
           localStorage.setItem('admin_remember', 'true');
@@ -115,11 +125,15 @@ export default function AdminLogin({ onLoginSuccess, onBackToPortfolio, initialM
           localStorage.removeItem('admin_remember');
         }
 
-        setTimeout(() => {
-          onLoginSuccess(data.token, data.refreshToken || '', data.user);
-        }, 1200);
+       setTimeout(() => {
+  onLoginSuccess(
+    data.accessToken,
+    data.refreshToken,
+    user
+  );
+}, 1200);
       } else {
-        setErrorMessage(data.error || 'Invalid identifier or password.');
+       setErrorMessage(data.message || 'Invalid identifier or password.');
       }
     } catch (error) {
       console.error('Login error:', error);
