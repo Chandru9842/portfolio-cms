@@ -33,49 +33,24 @@ export default function App() {
   // Session validation, token refresh & automatic logout on expiration
   useEffect(() => {
     const checkAuth = async () => {
-      // 1. Fetch current security configuration from DB first
-      try {
-        const configResponse = await fetch('/api/auth/login-config');
-        if (configResponse.ok) {
-          const config = await configResponse.json();
-          const forceLogin = !!config.alwaysRequireLogin;
-          setAlwaysRequireLogin(forceLogin);
-          
-          if (forceLogin) {
-            // If we are on the portfolio page and alwaysRequireLogin is true,
-            // immediately clear the authenticated session so they must authenticate again on next entry.
-            if (currentPath === '/') {
-              localStorage.removeItem('admin_token');
-              localStorage.removeItem('admin_refresh_token');
-              sessionStorage.removeItem('admin_token');
-              sessionStorage.removeItem('admin_refresh_token');
-              sessionStorage.removeItem('is_fresh_login');
-              setIsAuthenticated(false);
-              return;
-            }
+  try {
+    const token =
+        localStorage.getItem('admin_token') ||
+        sessionStorage.getItem('admin_token');
 
-            // Check if there is an active session flag indicating a fresh login in this browser session
-            const isFreshLogin = sessionStorage.getItem('is_fresh_login') === 'true';
-            
-            if (!isFreshLogin) {
-              // Ignore existing JWT, Remember Me, and Trusted Device
-              // Clear any active authentication session
-              localStorage.clear();
-              sessionStorage.clear();
-              setIsAuthenticated(false);
-              
-              if (currentPath.startsWith('/admin') && currentPath !== '/admin/login') {
-                setTimeout(() => {
-                  navigate('/admin/login');
-                }, 0);
-              }
-              return;
-            }
-          }
+    if (!token) {
+        setIsAuthenticated(false);
+
+        if (
+            currentPath.startsWith('/admin') &&
+            currentPath !== '/admin/login'
+        ) {
+            navigate('/admin/login');
         }
-      } catch (err) {
-        console.error('Failed to read auth settings from database:', err);
-      }
+    }
+} catch (err) {
+    console.error(err);
+}
 
       // 2. Process standard authentication token check
       const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
@@ -166,50 +141,36 @@ export default function App() {
     navigate('/');
   };
 
-  const handleEnterCMS = async () => {
-    try {
-      const response = await fetch('/api/auth/login-config');
-      const data = await response.json();
-      const isForce = !!data.alwaysRequireLogin;
-      setAlwaysRequireLogin(isForce);
+const handleEnterCMS = async () => {
+  try {
+    const token =
+      localStorage.getItem('admin_token') ||
+      sessionStorage.getItem('admin_token');
 
-      if (isForce) {
-        // Clear any active authentication session
-        localStorage.removeItem('admin_token');
-        localStorage.removeItem('alex_dev_jwt_token');
-        localStorage.removeItem('admin_refresh_token');
-        localStorage.removeItem('admin_user');
-        localStorage.removeItem('admin_remember');
-        sessionStorage.clear();
-        setIsAuthenticated(false);
-        navigate('/admin/login');
-      } else {
-        // If alwaysForceLogin == false:
-        // - Validate JWT
-        // - If valid → Dashboard
-        // - If invalid → Login
-        const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
-        if (token) {
-          const verifyResponse = await fetch('/api/auth/verify', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          const verifyData = await verifyResponse.json();
-          if (verifyData.valid && verifyData.user?.role === 'ROLE_ADMIN') {
-            setIsAuthenticated(true);
-            navigate('/admin/dashboard');
-            return;
-          }
+    if (token) {
+      const verifyResponse = await fetch('/api/auth/verify', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (verifyResponse.ok) {
+        const verifyData = await verifyResponse.json();
+
+        if (verifyData.valid && verifyData.user?.role === 'ROLE_ADMIN') {
+          setIsAuthenticated(true);
+          navigate('/admin/dashboard');
+          return;
         }
-        // Otherwise, redirect to /admin/login
-        navigate('/admin/login');
       }
-    } catch (err) {
-      console.error('Error in handleEnterCMS:', err);
-      navigate('/admin/login');
     }
-  };
+
+    navigate('/admin/login');
+  } catch (err) {
+    console.error(err);
+    navigate('/admin/login');
+  }
+};
 
   const handleLoginSuccess = (token: string, refreshToken: string, user: any) => {
     sessionStorage.setItem('is_fresh_login', 'true');

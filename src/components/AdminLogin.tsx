@@ -36,22 +36,7 @@ export default function AdminLogin({ onLoginSuccess, onBackToPortfolio, initialM
     }
   }, []);
 
-  // Retrieve dynamic configuration from the public endpoint
-  // useEffect(() => {
-  //   fetch('/api/auth/login-config')
-  //     .then((res) => {
-  //       if (res.ok) return res.json();
-  //       return null;
-  //     })
-  //     .then((data) => {
-  //       if (data) {
-  //         setLoginConfig(data);
-  //       }
-  //     })
-  //     .catch((err) => console.error('Error reading system auth settings:', err));
-  // }, []);
 
-  // Clear error message after 5 seconds
   useEffect(() => {
     if (errorMessage) {
       const timer = setTimeout(() => setErrorMessage(null), 5000);
